@@ -15,7 +15,7 @@ pub enum Commands {
     /// Add files of specified extension to the project
     #[command(name = "add", visible_alias = "a")]
     Add {
-        /// File extension to add (e.g., "c", "cpp") or regex pattern when used with --regex
+        /// File extension to add (e.g., "c", "cpp")
         #[arg(short, long)]
         extension: String,
         
@@ -31,9 +31,13 @@ pub enum Commands {
         #[arg(short, long, default_value_t = true)]
         recursive: bool,
         
-        /// Treat extension as a regex pattern instead of a file extension
+        /// Filter paths using regex pattern (e.g., '[0-9]+__.*' to match numbered directories)
         #[arg(short = 'x', long)]
-        regex: bool,
+        regex: Option<String>,
+        
+        /// Negate the matching logic (exclude instead of include matches)
+        #[arg(short = 'n', long)]
+        not: bool,
         
         /// Show what would be done without actually modifying files
         #[arg(long)]
@@ -58,6 +62,14 @@ pub enum Commands {
         /// Confirm deletion without prompting
         #[arg(short = 'y', long)]
         yes: bool,
+        
+        /// Filter paths using regex pattern to limit deletion scope
+        #[arg(short = 'x', long)]
+        regex: Option<String>,
+        
+        /// Negate the matching logic (exclude instead of include matches)
+        #[arg(short = 'n', long)]
+        not: bool,
         
         /// Show what would be done without actually modifying files
         #[arg(long)]

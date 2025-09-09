@@ -14,11 +14,11 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Add { extension, project, directory, recursive, regex, dryrun } => {
-            add_files_to_project(extension, project, directory, recursive, regex, dryrun)?;
+        Commands::Add { extension, project, directory, recursive, regex, not, dryrun } => {
+            add_files_to_project(extension, project, directory, recursive, regex, not, dryrun)?;
         }
-        Commands::Delete { project, target, extension, yes, dryrun } => {
-            delete_from_project(project, target, extension, yes, dryrun)?;
+        Commands::Delete { project, target, extension, yes, regex, not, dryrun } => {
+            delete_from_project(project, target, extension, yes, regex, not, dryrun)?;
         }
         Commands::View { project, files_only, level } => {
             view_project_structure(project, files_only, level)?;
@@ -45,7 +45,8 @@ fn add_files_to_project(
     project_path: PathBuf,
     directory: Option<PathBuf>,
     recursive: bool,
-    use_regex: bool,
+    regex_pattern: Option<String>,
+    negate: bool,
     dryrun: bool,
 ) -> Result<()> {
     // Determine the directory to scan
@@ -58,20 +59,21 @@ fn add_files_to_project(
 
     println!("Scanning directory: {}", scan_dir.display());
     
-    if use_regex {
-        println!("Looking for files matching regex: {}", extension);
-    } else {
-        println!("Looking for *.{} files", extension);
+    match (&regex_pattern, negate) {
+        (Some(ref pattern), true) => println!("Looking for *.{} files in paths NOT matching regex: {}", extension, pattern),
+        (Some(ref pattern), false) => println!("Looking for *.{} files in paths matching regex: {}", extension, pattern),
+        (None, true) => println!("Looking for *.{} files (negation has no effect without regex)", extension),
+        (None, false) => println!("Looking for *.{} files", extension),
     }
 
-    // Compile regex pattern if needed
-    let regex_pattern = if use_regex {
-        Some(Regex::new(&extension).context("Invalid regex pattern")?)
+    // Compile regex pattern if provided
+    let compiled_regex = if let Some(ref pattern) = regex_pattern {
+        Some(Regex::new(pattern).context("Invalid regex pattern")?)
     } else {
         None
     };
 
-    // Find all files with the specified extension or matching regex
+    // Find all files with the specified extension, filtered by path regex if provided
     let mut files_to_add = Vec::new();
     
     let walker = if recursive {
@@ -85,23 +87,34 @@ fn add_files_to_project(
         let path = entry.path();
         
         if path.is_file() {
-            let matches = if let Some(ref regex) = regex_pattern {
-                // Use regex matching on the full filename
-                if let Some(filename) = path.file_name() {
-                    regex.is_match(&filename.to_string_lossy())
-                } else {
-                    false
-                }
+            // First check if file has the correct extension
+            let has_extension = if let Some(ext) = path.extension() {
+                ext.to_string_lossy().eq_ignore_ascii_case(&extension)
             } else {
-                // Use extension matching
-                if let Some(ext) = path.extension() {
-                    ext.to_string_lossy().eq_ignore_ascii_case(&extension)
-                } else {
-                    false
-                }
+                false
             };
             
-            if matches {
+            if !has_extension {
+                continue;
+            }
+            
+            // Then check if path matches regex (if provided) with negation support
+            let path_matches = if let Some(ref regex) = compiled_regex {
+                // Get the relative path from scan_dir to apply regex against
+                let relative_to_scan = path.strip_prefix(&scan_dir).unwrap_or(path);
+                let path_str = relative_to_scan.to_string_lossy();
+                let regex_matches = regex.is_match(&path_str);
+                
+                if negate {
+                    !regex_matches // Include files that DON'T match the regex
+                } else {
+                    regex_matches // Include files that DO match the regex
+                }
+            } else {
+                true // No regex means all paths match (negation has no effect)
+            };
+            
+            if path_matches {
                 // Make path relative to project directory if possible
                 let relative_path = if let Some(project_dir) = project_path.parent() {
                     match path.strip_prefix(project_dir) {
@@ -117,8 +130,8 @@ fn add_files_to_project(
     }
 
     if files_to_add.is_empty() {
-        if use_regex {
-            println!("No files matching regex '{}' found in {}", extension, scan_dir.display());
+        if let Some(ref pattern) = regex_pattern {
+            println!("No *.{} files found in paths matching regex '{}' in {}", extension, pattern, scan_dir.display());
         } else {
             println!("No *.{} files found in {}", extension, scan_dir.display());
         }
@@ -248,6 +261,8 @@ fn delete_from_project(
     target: Option<String>,
     extension: Option<String>,
     yes: bool,
+    regex_pattern: Option<String>,
+    negate: bool,
     dryrun: bool,
 ) -> Result<()> {
     println!("Analyzing project: {}", project_path.display());
@@ -267,13 +282,40 @@ fn delete_from_project(
     // Load the project file
     let mut vcxproj = VcxprojFile::load(&project_path)?;
     
+    // Compile regex pattern if provided
+    let compiled_regex = if let Some(ref pattern) = regex_pattern {
+        Some(Regex::new(pattern).context("Invalid regex pattern")?)
+    } else {
+        None
+    };
+
     // Preview what will be deleted
     let original_content = vcxproj.content.clone();
-    let deleted_files = vcxproj.delete_files(target_str, extension.as_deref())?;
+    let all_deleted_files = vcxproj.delete_files(target_str, extension.as_deref())?;
     vcxproj.content = original_content; // Restore for confirmation
     
+    // Apply regex filtering if provided with negation support
+    let deleted_files: Vec<String> = if let Some(ref regex) = compiled_regex {
+        all_deleted_files.into_iter()
+            .filter(|file_path| {
+                let regex_matches = regex.is_match(file_path);
+                if negate {
+                    !regex_matches // Delete files that DON'T match the regex
+                } else {
+                    regex_matches // Delete files that DO match the regex
+                }
+            })
+            .collect()
+    } else {
+        all_deleted_files
+    };
+    
     if deleted_files.is_empty() {
-        println!("No files found matching: {}", target_display);
+        match (&regex_pattern, negate) {
+            (Some(ref pattern), true) => println!("No files found matching: {} with regex filter NOT matching: {}", target_display, pattern),
+            (Some(ref pattern), false) => println!("No files found matching: {} with regex filter: {}", target_display, pattern),
+            (None, _) => println!("No files found matching: {}", target_display),
+        }
         return Ok(());
     }
     
@@ -289,8 +331,9 @@ fn delete_from_project(
     if filter_path.exists() {
         let mut filter_file = FilterFile::load(&filter_path)?;
         let original_filter_content = filter_file.content.clone();
-        let (_, deleted_filters) = filter_file.delete_files_and_filters(target_str, extension.as_deref())?;
-        preview_filters = deleted_filters;
+        let (_, all_deleted_filters) = filter_file.delete_files_and_filters(target_str, extension.as_deref())?;
+        // Apply the same regex filtering to filters (optional, may not be needed)
+        preview_filters = all_deleted_filters;
         filter_file.content = original_filter_content; // Restore for confirmation
     }
     
