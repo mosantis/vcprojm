@@ -9,3 +9,4 @@ quick-xml = "0.31"
 walkdir = "2.3"
 uuid = { version = "1.5", features = ["v4"] }
 anyhow = "1.0"
+regex = "1.0"

@@ -3,6 +3,7 @@ mod vcxproj;
 
 use anyhow::{Context, Result};
 use clap::Parser;
+use regex::Regex;
 use std::path::PathBuf;
 use walkdir::WalkDir;
 
@@ -13,8 +14,8 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Add { extension, project, directory, recursive } => {
-            add_files_to_project(extension, project, directory, recursive)?;
+        Commands::Add { extension, project, directory, recursive, regex } => {
+            add_files_to_project(extension, project, directory, recursive, regex)?;
         }
         Commands::Delete { project, target, extension, yes } => {
             delete_from_project(project, target, extension, yes)?;
@@ -44,6 +45,7 @@ fn add_files_to_project(
     project_path: PathBuf,
     directory: Option<PathBuf>,
     recursive: bool,
+    use_regex: bool,
 ) -> Result<()> {
     // Determine the directory to scan
     let scan_dir = directory.unwrap_or_else(|| {
@@ -54,9 +56,21 @@ fn add_files_to_project(
     });
 
     println!("Scanning directory: {}", scan_dir.display());
-    println!("Looking for *.{} files", extension);
+    
+    if use_regex {
+        println!("Looking for files matching regex: {}", extension);
+    } else {
+        println!("Looking for *.{} files", extension);
+    }
 
-    // Find all files with the specified extension
+    // Compile regex pattern if needed
+    let regex_pattern = if use_regex {
+        Some(Regex::new(&extension).context("Invalid regex pattern")?)
+    } else {
+        None
+    };
+
+    // Find all files with the specified extension or matching regex
     let mut files_to_add = Vec::new();
     
     let walker = if recursive {
@@ -70,25 +84,43 @@ fn add_files_to_project(
         let path = entry.path();
         
         if path.is_file() {
-            if let Some(ext) = path.extension() {
-                if ext.to_string_lossy().eq_ignore_ascii_case(&extension) {
-                    // Make path relative to project directory if possible
-                    let relative_path = if let Some(project_dir) = project_path.parent() {
-                        match path.strip_prefix(project_dir) {
-                            Ok(rel) => rel.to_path_buf(),
-                            Err(_) => path.to_path_buf(),
-                        }
-                    } else {
-                        path.to_path_buf()
-                    };
-                    files_to_add.push(relative_path);
+            let matches = if let Some(ref regex) = regex_pattern {
+                // Use regex matching on the full filename
+                if let Some(filename) = path.file_name() {
+                    regex.is_match(&filename.to_string_lossy())
+                } else {
+                    false
                 }
+            } else {
+                // Use extension matching
+                if let Some(ext) = path.extension() {
+                    ext.to_string_lossy().eq_ignore_ascii_case(&extension)
+                } else {
+                    false
+                }
+            };
+            
+            if matches {
+                // Make path relative to project directory if possible
+                let relative_path = if let Some(project_dir) = project_path.parent() {
+                    match path.strip_prefix(project_dir) {
+                        Ok(rel) => rel.to_path_buf(),
+                        Err(_) => path.to_path_buf(),
+                    }
+                } else {
+                    path.to_path_buf()
+                };
+                files_to_add.push(relative_path);
             }
         }
     }
 
     if files_to_add.is_empty() {
-        println!("No *.{} files found in {}", extension, scan_dir.display());
+        if use_regex {
+            println!("No files matching regex '{}' found in {}", extension, scan_dir.display());
+        } else {
+            println!("No *.{} files found in {}", extension, scan_dir.display());
+        }
         return Ok(());
     }
 

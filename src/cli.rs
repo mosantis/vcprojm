@@ -15,7 +15,7 @@ pub enum Commands {
     /// Add files of specified extension to the project
     #[command(name = "add", visible_alias = "a")]
     Add {
-        /// File extension to add (e.g., "c", "cpp")
+        /// File extension to add (e.g., "c", "cpp") or regex pattern when used with --regex
         #[arg(short, long)]
         extension: String,
         
@@ -30,6 +30,10 @@ pub enum Commands {
         /// Include subdirectories in scan
         #[arg(short, long, default_value_t = true)]
         recursive: bool,
+        
+        /// Treat extension as a regex pattern instead of a file extension
+        #[arg(short = 'x', long)]
+        regex: bool,
     },
     
     /// Delete files or folders from the project

@@ -150,5 +150,13 @@
       <ClCompile Include="main.c" />
     <ClCompile Include="src\helper.c" />
     <ClCompile Include="src\utils\string_utils.c" />
+    <ClCompile Include="main.c" />
+    <ClCompile Include="src\helper.c" />
+    <ClCompile Include="src\utils\string_utils.c" />
+    <ClCompile Include="main.c" />
+    <ClCompile Include="src\helper.c" />
+    <ClCompile Include="src\utils\string_utils.c" />
+    <ClCompile Include="main.c" />
+    <ClCompile Include="src\helper.c" />
 </ItemGroup>
 </Project>
