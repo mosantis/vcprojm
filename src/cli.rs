@@ -34,6 +34,10 @@ pub enum Commands {
         /// Treat extension as a regex pattern instead of a file extension
         #[arg(short = 'x', long)]
         regex: bool,
+        
+        /// Show what would be done without actually modifying files
+        #[arg(long)]
+        dryrun: bool,
     },
     
     /// Delete files or folders from the project
@@ -54,6 +58,10 @@ pub enum Commands {
         /// Confirm deletion without prompting
         #[arg(short = 'y', long)]
         yes: bool,
+        
+        /// Show what would be done without actually modifying files
+        #[arg(long)]
+        dryrun: bool,
     },
     
     /// View project structure as it appears in Visual Studio
@@ -90,6 +98,10 @@ pub enum Commands {
         /// Skip confirmation prompts
         #[arg(short = 'y', long)]
         yes: bool,
+        
+        /// Show what would be done without actually modifying files
+        #[arg(long)]
+        dryrun: bool,
     },
     
     /// Add include directory to all configurations

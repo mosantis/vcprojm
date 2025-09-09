@@ -14,17 +14,17 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Add { extension, project, directory, recursive, regex } => {
-            add_files_to_project(extension, project, directory, recursive, regex)?;
+        Commands::Add { extension, project, directory, recursive, regex, dryrun } => {
+            add_files_to_project(extension, project, directory, recursive, regex, dryrun)?;
         }
-        Commands::Delete { project, target, extension, yes } => {
-            delete_from_project(project, target, extension, yes)?;
+        Commands::Delete { project, target, extension, yes, dryrun } => {
+            delete_from_project(project, target, extension, yes, dryrun)?;
         }
         Commands::View { project, files_only, level } => {
             view_project_structure(project, files_only, level)?;
         }
-        Commands::Rename { project, from, to, yes } => {
-            rename_filter_in_project(project, from, to, yes)?;
+        Commands::Rename { project, from, to, yes, dryrun } => {
+            rename_filter_in_project(project, from, to, yes, dryrun)?;
         }
         Commands::AddInclude { project, path } => {
             add_include_directory(project, path)?;
@@ -46,6 +46,7 @@ fn add_files_to_project(
     directory: Option<PathBuf>,
     recursive: bool,
     use_regex: bool,
+    dryrun: bool,
 ) -> Result<()> {
     // Determine the directory to scan
     let scan_dir = directory.unwrap_or_else(|| {
@@ -127,6 +128,21 @@ fn add_files_to_project(
     println!("Found {} files to add:", files_to_add.len());
     for file in &files_to_add {
         println!("  - {}", file.display());
+    }
+
+    if dryrun {
+        println!("\n🔍 DRY RUN - No files were modified");
+        println!("Would update project file: {}", project_path.display());
+        
+        let filter_path = project_path.with_extension("vcxproj.filters");
+        if filter_path.exists() {
+            println!("Would update filter file: {}", filter_path.display());
+        } else {
+            println!("Would create filter file: {}", filter_path.display());
+        }
+        
+        println!("✨ Dry run completed - {} files would be added", files_to_add.len());
+        return Ok(());
     }
 
     // Load and update the .vcxproj file
@@ -232,6 +248,7 @@ fn delete_from_project(
     target: Option<String>,
     extension: Option<String>,
     yes: bool,
+    dryrun: bool,
 ) -> Result<()> {
     println!("Analyzing project: {}", project_path.display());
     
@@ -282,6 +299,21 @@ fn delete_from_project(
         for filter in &preview_filters {
             println!("  - {}", filter);
         }
+    }
+    
+    if dryrun {
+        println!("\n🔍 DRY RUN - No files were modified");
+        println!("Would remove {} files from project file: {}", deleted_files.len(), project_path.display());
+        
+        if filter_path.exists() {
+            if !preview_filters.is_empty() {
+                println!("Would remove {} filters from filter file: {}", preview_filters.len(), filter_path.display());
+            }
+            println!("Would update filter file: {}", filter_path.display());
+        }
+        
+        println!("✨ Dry run completed - {} files would be removed", deleted_files.len());
+        return Ok(());
     }
     
     // Confirm deletion
@@ -352,6 +384,7 @@ fn rename_filter_in_project(
     from: String,
     to: String,
     yes: bool,
+    dryrun: bool,
 ) -> Result<()> {
     println!("Analyzing project: {}", project_path.display());
     
@@ -369,6 +402,26 @@ fn rename_filter_in_project(
     
     if renamed_files.is_empty() {
         println!("No files found in filter '{}'", from);
+        return Ok(());
+    }
+    
+    if dryrun {
+        println!("\n🔍 DRY RUN - No files were modified");
+        if target_exists {
+            println!("Would merge filter '{}' into existing filter '{}'", from, to);
+            println!("Files that would be moved from '{}' filter:", from);
+            for file in &renamed_files {
+                println!("  - {} → {}", file, to);
+            }
+        } else {
+            println!("Would rename filter '{}' to '{}'", from, to);
+            println!("Files that would be moved:");
+            for file in &renamed_files {
+                println!("  - {} → {}", file, to);
+            }
+        }
+        println!("Would update filter file: {}", filter_path.display());
+        println!("✨ Dry run completed - {} files would be moved", renamed_files.len());
         return Ok(());
     }
     
