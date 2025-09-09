@@ -62,6 +62,10 @@ pub enum Commands {
         /// Show only files (don't show empty filters)
         #[arg(short, long)]
         files_only: bool,
+        
+        /// Maximum hierarchy levels to display (0=folders only, default=all levels)
+        #[arg(short, long)]
+        level: Option<usize>,
     },
     
     /// Rename folders/filters in the project

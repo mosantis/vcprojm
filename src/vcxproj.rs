@@ -900,7 +900,7 @@ impl ProjectStructure {
         })
     }
     
-    pub fn display_tree(&self, files_only: bool, _show_extensions: bool) -> String {
+    pub fn display_tree(&self, files_only: bool, _show_extensions: bool, level: Option<usize>) -> String {
         let mut output = String::new();
         
         // Project root - always show extension
@@ -924,23 +924,94 @@ impl ProjectStructure {
             }
         }
         
-        // Show filters with their files
+        // Create a structure of all items with their depth levels
+        let mut items: Vec<(String, usize, bool, Vec<&ProjectFile>)> = Vec::new(); // (name, depth, is_filter, files)
+        
+        // Add filters
         let mut filter_names: Vec<_> = filter_files.keys().cloned().collect();
+        // Add existing empty filters
+        for filter_name in self.filters.keys() {
+            if !filter_names.contains(filter_name) {
+                filter_names.push(filter_name.clone());
+            }
+        }
         filter_names.sort();
         
-        let total_items = filter_names.len() + if unfiltered_files.is_empty() { 0 } else { 1 };
+        for filter_name in &filter_names {
+            let depth = filter_name.matches('\\').count() + 1; // Count directory separators + 1
+            let files = filter_files.get(filter_name).cloned().unwrap_or_default();
+            items.push((filter_name.clone(), depth, true, files));
+        }
         
-        for (index, filter_name) in filter_names.iter().enumerate() {
-            let is_last = index == total_items - 1 && unfiltered_files.is_empty();
-            let prefix = if is_last { "└── " } else { "├── " };
-            let continuation = if is_last { "    " } else { "│   " };
+        // Add unfiltered files as "Source Files" at depth 1
+        if !unfiltered_files.is_empty() {
+            items.push(("Source Files".to_string(), 1, true, unfiltered_files));
+        }
+        
+        // Sort by depth first, then by name
+        items.sort_by(|a, b| a.1.cmp(&b.1).then_with(|| a.0.cmp(&b.0)));
+        
+        // Display items based on level restrictions
+        self.display_items(&mut output, &items, level, files_only);
+        
+        output
+    }
+    
+    fn display_items(
+        &self, 
+        output: &mut String, 
+        items: &[(String, usize, bool, Vec<&ProjectFile>)], 
+        level: Option<usize>,
+        files_only: bool
+    ) {
+        let mut processed_filters = HashSet::new();
+        let mut current_prefix_stack: Vec<(String, bool)> = Vec::new(); // (prefix, is_last)
+        
+        for (index, (item_name, depth, is_filter, files)) in items.iter().enumerate() {
+            // Check if we should display this item based on level
+            if let Some(max_level) = level {
+                if *depth > max_level {
+                    continue;
+                }
+            }
             
-            if let Some(files) = filter_files.get(filter_name) {
+            if *is_filter {
+                if processed_filters.contains(item_name) {
+                    continue;
+                }
+                processed_filters.insert(item_name.clone());
+                
                 if files.is_empty() && files_only {
                     continue; // Skip empty filters if files_only is true
                 }
                 
-                output.push_str(&format!("{}📁 {}\n", prefix, filter_name));
+                // Adjust prefix stack to current depth
+                current_prefix_stack.truncate(*depth - 1);
+                
+                // Determine if this is the last item at this depth
+                let is_last_at_depth = !items.iter().skip(index + 1).any(|(_, d, _, _)| d == depth);
+                
+                // Build prefix for this filter
+                let prefix = self.build_prefix(&current_prefix_stack);
+                let current_symbol = if is_last_at_depth { "└── " } else { "├── " };
+                
+                output.push_str(&format!("{}{}📁 {}\n", prefix, current_symbol, item_name));
+                
+                // Update prefix stack for children
+                current_prefix_stack.push((
+                    if is_last_at_depth { "    " } else { "│   " }.to_string(),
+                    is_last_at_depth
+                ));
+                
+                // Show files in this filter if level allows
+                if let Some(max_level) = level {
+                    if max_level == 0 {
+                        continue; // Level 0 = folders only
+                    }
+                    if *depth + 1 > max_level {
+                        continue; // Files would exceed max level
+                    }
+                }
                 
                 let mut sorted_files = files.clone();
                 sorted_files.sort_by_key(|f| &f.path);
@@ -949,50 +1020,20 @@ impl ProjectStructure {
                     let is_last_file = file_index == sorted_files.len() - 1;
                     let file_prefix = if is_last_file { "└── " } else { "├── " };
                     
-                    // Always show file extensions
                     let file_display = Path::new(&file.path)
                         .file_name()
                         .unwrap_or_default()
                         .to_string_lossy()
                         .to_string();
                     
-                    output.push_str(&format!("{}{}📄 {}\n", continuation, file_prefix, file_display));
+                    let current_prefix = self.build_prefix(&current_prefix_stack);
+                    output.push_str(&format!("{}{}📄 {}\n", current_prefix, file_prefix, file_display));
                 }
             }
         }
-        
-        // Show unfiltered files
-        if !unfiltered_files.is_empty() {
-            let prefix = if filter_names.is_empty() { "└── " } else { "├── " };
-            let continuation = if filter_names.is_empty() { "    " } else { "│   " };
-            
-            if !files_only {
-                output.push_str(&format!("{}📁 Source Files\n", prefix));
-            }
-            
-            let mut sorted_unfiltered = unfiltered_files;
-            sorted_unfiltered.sort_by_key(|f| &f.path);
-            
-            for (file_index, file) in sorted_unfiltered.iter().enumerate() {
-                let is_last_file = file_index == sorted_unfiltered.len() - 1;
-                let file_prefix = if files_only {
-                    if is_last_file && filter_names.is_empty() { "└── " } else { "├── " }
-                } else {
-                    if is_last_file { "└── " } else { "├── " }
-                };
-                
-                // Always show file extensions
-                let file_display = Path::new(&file.path)
-                    .file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .to_string();
-                
-                let file_continuation = if files_only { "" } else { &continuation };
-                output.push_str(&format!("{}{}📄 {}\n", file_continuation, file_prefix, file_display));
-            }
-        }
-        
-        output
+    }
+    
+    fn build_prefix(&self, stack: &[(String, bool)]) -> String {
+        stack.iter().map(|(prefix, _)| prefix.as_str()).collect::<String>()
     }
 }

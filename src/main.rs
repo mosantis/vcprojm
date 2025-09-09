@@ -19,8 +19,8 @@ fn main() -> Result<()> {
         Commands::Delete { project, target, extension, yes } => {
             delete_from_project(project, target, extension, yes)?;
         }
-        Commands::View { project, files_only } => {
-            view_project_structure(project, files_only)?;
+        Commands::View { project, files_only, level } => {
+            view_project_structure(project, files_only, level)?;
         }
         Commands::Rename { project, from, to, yes } => {
             rename_filter_in_project(project, from, to, yes)?;
@@ -290,12 +290,13 @@ fn delete_from_project(
 fn view_project_structure(
     project_path: PathBuf,
     files_only: bool,
+    level: Option<usize>,
 ) -> Result<()> {
     // Load and parse the project structure
     let structure = ProjectStructure::from_project(&project_path)?;
     
     // Display the tree structure (extensions always shown)
-    let tree_output = structure.display_tree(files_only, true);
+    let tree_output = structure.display_tree(files_only, true, level);
     print!("{}", tree_output);
     
     // Show summary
