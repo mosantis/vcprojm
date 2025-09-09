@@ -115,14 +115,10 @@ fn add_files_to_project(
             };
             
             if path_matches {
-                // Make path relative to project directory if possible
-                let relative_path = if let Some(project_dir) = project_path.parent() {
-                    match path.strip_prefix(project_dir) {
-                        Ok(rel) => rel.to_path_buf(),
-                        Err(_) => path.to_path_buf(),
-                    }
-                } else {
-                    path.to_path_buf()
+                // Make path relative to scan directory to preserve folder structure
+                let relative_path = match path.strip_prefix(&scan_dir) {
+                    Ok(rel) => rel.to_path_buf(),
+                    Err(_) => path.to_path_buf(), // Fallback to absolute path if strip_prefix fails
                 };
                 files_to_add.push(relative_path);
             }

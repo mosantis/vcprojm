@@ -35,6 +35,18 @@
     <Filter Include="include">
       <UniqueIdentifier>{4B8D8C54-B9DC-492D-B7CD-A5271A94337D}</UniqueIdentifier>
     </Filter>
+    <Filter Include="folder2\folder2a">
+      <UniqueIdentifier>{E08D01D0-092B-4117-BD41-4FA60E575B10}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="folder3">
+      <UniqueIdentifier>{A70BCC6D-4851-4337-996F-7E434790F6C4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="folder4\src">
+      <UniqueIdentifier>{4022FB7D-2856-493D-A2B3-79414AF58C1B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="folder1">
+      <UniqueIdentifier>{EF21839C-110D-41E4-95AF-348846488AAA}</UniqueIdentifier>
+    </Filter>
 </ItemGroup>
   </ItemGroup>
   </ItemGroup>
@@ -90,6 +102,18 @@
     </ClCompile>
     <ClCompile Include="src\helper.c">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="folder1\file1.c">
+      <Filter>folder1</Filter>
+    </ClCompile>
+    <ClCompile Include="folder2\folder2a\file2.c">
+      <Filter>folder2\folder2a</Filter>
+    </ClCompile>
+    <ClCompile Include="folder3\file3.c">
+      <Filter>folder3</Filter>
+    </ClCompile>
+    <ClCompile Include="folder4\src\animal.c">
+      <Filter>folder4\src</Filter>
     </ClCompile>
 </ItemGroup>
 </Project>
