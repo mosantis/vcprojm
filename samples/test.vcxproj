@@ -158,5 +158,9 @@
     <ClCompile Include="src\utils\string_utils.c" />
     <ClCompile Include="main.c" />
     <ClCompile Include="src\helper.c" />
+    <ClCompile Include="repo1\src\folder1\file1.c" />
+    <ClCompile Include="repo1\src\folder2\folder2a\file2.c" />
+    <ClCompile Include="repo1\src\folder3\file3.c" />
+    <ClCompile Include="repo1\src\folder4\src\animal.c" />
 </ItemGroup>
 </Project>

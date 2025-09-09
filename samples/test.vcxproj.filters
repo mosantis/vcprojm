@@ -47,6 +47,18 @@
     <Filter Include="folder1">
       <UniqueIdentifier>{EF21839C-110D-41E4-95AF-348846488AAA}</UniqueIdentifier>
     </Filter>
+    <Filter Include="folder1">
+      <UniqueIdentifier>{DDFF9D38-658F-403C-B01E-8E642DF52499}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="folder4\src">
+      <UniqueIdentifier>{0E70FAE8-2573-419D-BC1F-EB5915E9818D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="folder3">
+      <UniqueIdentifier>{8921C0EC-1A55-4F68-8642-854D85B2E61C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="folder2\folder2a">
+      <UniqueIdentifier>{D3E654EF-B68A-4E9F-8A17-9E1450A33A2C}</UniqueIdentifier>
+    </Filter>
 </ItemGroup>
   </ItemGroup>
   </ItemGroup>
@@ -113,6 +125,18 @@
       <Filter>folder3</Filter>
     </ClCompile>
     <ClCompile Include="folder4\src\animal.c">
+      <Filter>folder4\src</Filter>
+    </ClCompile>
+    <ClCompile Include="repo1\src\folder1\file1.c">
+      <Filter>folder1</Filter>
+    </ClCompile>
+    <ClCompile Include="repo1\src\folder2\folder2a\file2.c">
+      <Filter>folder2\folder2a</Filter>
+    </ClCompile>
+    <ClCompile Include="repo1\src\folder3\file3.c">
+      <Filter>folder3</Filter>
+    </ClCompile>
+    <ClCompile Include="repo1\src\folder4\src\animal.c">
       <Filter>folder4\src</Filter>
     </ClCompile>
 </ItemGroup>

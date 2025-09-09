@@ -458,6 +458,104 @@ impl FilterFile {
         Ok(())
     }
 
+    pub fn add_source_files_with_hierarchy(&mut self, project_files: &[PathBuf], scan_relative_files: &[PathBuf]) -> Result<()> {
+        // Collect unique directories for filters using scan_relative_files for hierarchy
+        let mut dirs = HashSet::new();
+        for file in scan_relative_files {
+            if let Some(parent) = file.parent() {
+                let filter_name = parent.to_string_lossy().replace('/', "\\");
+                if !filter_name.is_empty() {
+                    dirs.insert(filter_name);
+                }
+            }
+        }
+
+        // Add filter entries
+        let mut new_filters = String::new();
+        for dir in &dirs {
+            let uuid = uuid::Uuid::new_v4();
+            new_filters.push_str(&format!(
+                "    <Filter Include=\"{}\">\n      <UniqueIdentifier>{{{}}}</UniqueIdentifier>\n    </Filter>\n",
+                dir, uuid.to_string().to_uppercase()
+            ));
+        }
+
+        // Add ClCompile entries using project_files for Include paths and scan_relative_files for Filter assignments
+        let mut new_clcompile = String::new();
+        for (i, project_file) in project_files.iter().enumerate() {
+            let scan_relative_file = &scan_relative_files[i];
+            if let Some(ext) = project_file.extension() {
+                if ext == "c" || ext == "cpp" || ext == "cc" || ext == "cxx" {
+                    let include_path = project_file.to_string_lossy().replace('/', "\\");
+                    new_clcompile.push_str(&format!("    <ClCompile Include=\"{}\">\n", include_path));
+                    
+                    if let Some(parent) = scan_relative_file.parent() {
+                        let filter_name = parent.to_string_lossy().replace('/', "\\");
+                        if !filter_name.is_empty() {
+                            new_clcompile.push_str(&format!("      <Filter>{}</Filter>\n", filter_name));
+                        } else {
+                            new_clcompile.push_str("      <Filter>Source Files</Filter>\n");
+                        }
+                    } else {
+                        new_clcompile.push_str("      <Filter>Source Files</Filter>\n");
+                    }
+                    
+                    new_clcompile.push_str("    </ClCompile>\n");
+                }
+            }
+        }
+
+        // Insert filters if we have new ones
+        if !new_filters.is_empty() {
+            if let Some(pos) = self.content.find("<Filter Include=") {
+                // Find the ItemGroup containing filters
+                let before_pos = &self.content[..pos];
+                if let Some(itemgroup_start) = before_pos.rfind("<ItemGroup>") {
+                    let after_itemgroup = &self.content[itemgroup_start..];
+                    if let Some(itemgroup_end) = after_itemgroup.find("</ItemGroup>") {
+                        let insertion_point = itemgroup_start + itemgroup_end;
+                        self.content.insert_str(insertion_point, &new_filters);
+                    }
+                }
+            } else {
+                // Create new filter ItemGroup
+                if let Some(pos) = self.content.find("  </ItemGroup>") {
+                    let itemgroup = format!(
+                        "  <ItemGroup>\n{}\n  </ItemGroup>\n",
+                        new_filters.trim_end()
+                    );
+                    self.content.insert_str(pos, &itemgroup);
+                }
+            }
+        }
+
+        // Insert ClCompile entries
+        if !new_clcompile.is_empty() {
+            if let Some(pos) = self.content.find("<ClCompile Include=") {
+                // Find the ItemGroup containing ClCompile
+                let before_pos = &self.content[..pos];
+                if let Some(itemgroup_start) = before_pos.rfind("<ItemGroup>") {
+                    let after_itemgroup = &self.content[itemgroup_start..];
+                    if let Some(itemgroup_end) = after_itemgroup.find("</ItemGroup>") {
+                        let insertion_point = itemgroup_start + itemgroup_end;
+                        self.content.insert_str(insertion_point, &new_clcompile);
+                    }
+                }
+            } else {
+                // Create new ClCompile ItemGroup before closing Project
+                if let Some(pos) = self.content.rfind("</Project>") {
+                    let itemgroup = format!(
+                        "  <ItemGroup>\n{}\n  </ItemGroup>\n",
+                        new_clcompile.trim_end()
+                    );
+                    self.content.insert_str(pos, &itemgroup);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn delete_files_and_filters(&mut self, target: &str, extension: Option<&str>) -> Result<(Vec<String>, Vec<String>)> {
         let mut deleted_files = Vec::new();
         let mut deleted_filters = Vec::new();

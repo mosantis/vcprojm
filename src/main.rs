@@ -75,6 +75,7 @@ fn add_files_to_project(
 
     // Find all files with the specified extension, filtered by path regex if provided
     let mut files_to_add = Vec::new();
+    let mut scan_relative_paths = Vec::new(); // For filter creation
     
     let walker = if recursive {
         WalkDir::new(&scan_dir)
@@ -115,12 +116,24 @@ fn add_files_to_project(
             };
             
             if path_matches {
-                // Make path relative to scan directory to preserve folder structure
-                let relative_path = match path.strip_prefix(&scan_dir) {
-                    Ok(rel) => rel.to_path_buf(),
-                    Err(_) => path.to_path_buf(), // Fallback to absolute path if strip_prefix fails
+                // Calculate path relative to project directory for Visual Studio to find the file
+                let project_relative_path = if let Some(project_dir) = project_path.parent() {
+                    match path.strip_prefix(project_dir) {
+                        Ok(rel) => rel.to_path_buf(),
+                        Err(_) => path.to_path_buf(), // Fallback to absolute path if strip_prefix fails
+                    }
+                } else {
+                    path.to_path_buf()
                 };
-                files_to_add.push(relative_path);
+                
+                // Calculate path relative to scan directory for filter hierarchy
+                let scan_relative_path = match path.strip_prefix(&scan_dir) {
+                    Ok(rel) => rel.to_path_buf(),
+                    Err(_) => path.to_path_buf(),
+                };
+                
+                files_to_add.push(project_relative_path);
+                scan_relative_paths.push(scan_relative_path);
             }
         }
     }
@@ -166,7 +179,7 @@ fn add_files_to_project(
     if filter_path.exists() {
         println!("Updating filter file: {}", filter_path.display());
         let mut filter_file = FilterFile::load(&filter_path)?;
-        filter_file.add_source_files(&files_to_add)?;
+        filter_file.add_source_files_with_hierarchy(&files_to_add, &scan_relative_paths)?;
         filter_file.save()?;
         println!("Successfully updated {}", filter_path.display());
     } else {
@@ -174,7 +187,7 @@ fn add_files_to_project(
         println!("Creating basic filter file...");
         
         // Create a basic filter file
-        let filter_content = create_basic_filter_file(&files_to_add)?;
+        let filter_content = create_basic_filter_file_with_hierarchy(&files_to_add, &scan_relative_paths)?;
         std::fs::write(&filter_path, filter_content)
             .context("Failed to create filter file")?;
         println!("Created {}", filter_path.display());
@@ -182,6 +195,63 @@ fn add_files_to_project(
 
     println!("\n✅ Project files updated successfully!");
     Ok(())
+}
+
+fn create_basic_filter_file_with_hierarchy(project_files: &[PathBuf], scan_relative_files: &[PathBuf]) -> Result<String> {
+    use std::collections::HashSet;
+    let mut content = String::new();
+    content.push_str("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
+    content.push_str("<Project ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">\n");
+    
+    // Collect unique directories using scan_relative_files
+    let mut dirs = HashSet::new();
+    for file in scan_relative_files {
+        if let Some(parent) = file.parent() {
+            let filter_name = parent.to_string_lossy().replace('/', "\\");
+            if !filter_name.is_empty() {
+                dirs.insert(filter_name);
+            }
+        }
+    }
+    
+    // Add filters
+    if !dirs.is_empty() {
+        content.push_str("  <ItemGroup>\n");
+        for dir in &dirs {
+            let uuid = uuid::Uuid::new_v4();
+            content.push_str(&format!(
+                "    <Filter Include=\"{}\">\n      <UniqueIdentifier>{{{}}}</UniqueIdentifier>\n    </Filter>\n",
+                dir, uuid.to_string().to_uppercase()
+            ));
+        }
+        content.push_str("  </ItemGroup>\n");
+    }
+    
+    // Add files with correct Include paths and filter assignments
+    content.push_str("  <ItemGroup>\n");
+    for (i, project_file) in project_files.iter().enumerate() {
+        let scan_relative_file = &scan_relative_files[i];
+        let include_path = project_file.to_string_lossy().replace('/', "\\");
+        
+        content.push_str(&format!("    <ClCompile Include=\"{}\">\n", include_path));
+        
+        if let Some(parent) = scan_relative_file.parent() {
+            let filter_name = parent.to_string_lossy().replace('/', "\\");
+            if !filter_name.is_empty() {
+                content.push_str(&format!("      <Filter>{}</Filter>\n", filter_name));
+            } else {
+                content.push_str("      <Filter>Source Files</Filter>\n");
+            }
+        } else {
+            content.push_str("      <Filter>Source Files</Filter>\n");
+        }
+        
+        content.push_str("    </ClCompile>\n");
+    }
+    content.push_str("  </ItemGroup>\n");
+    
+    content.push_str("</Project>");
+    Ok(content)
 }
 
 fn create_basic_filter_file(files: &[PathBuf]) -> Result<String> {
