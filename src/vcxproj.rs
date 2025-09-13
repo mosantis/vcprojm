@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, BTreeMap};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -361,102 +361,6 @@ impl FilterFile {
         Ok(Self { path, content })
     }
 
-    pub fn add_source_files(&mut self, files: &[PathBuf]) -> Result<()> {
-        // Collect unique directories for filters
-        let mut dirs = HashSet::new();
-        for file in files {
-            if let Some(parent) = file.parent() {
-                let filter_name = parent.to_string_lossy().replace('/', "\\");
-                if !filter_name.is_empty() {
-                    dirs.insert(filter_name);
-                }
-            }
-        }
-
-        // Add filter entries
-        let mut new_filters = String::new();
-        for dir in &dirs {
-            let uuid = uuid::Uuid::new_v4();
-            new_filters.push_str(&format!(
-                "    <Filter Include=\"{}\">\n      <UniqueIdentifier>{{{}}}</UniqueIdentifier>\n    </Filter>\n",
-                dir, uuid.to_string().to_uppercase()
-            ));
-        }
-
-        // Add ClCompile entries
-        let mut new_clcompile = String::new();
-        for file in files {
-            if let Some(ext) = file.extension() {
-                if ext == "c" || ext == "cpp" || ext == "cc" || ext == "cxx" {
-                    let include_path = file.to_string_lossy().replace('/', "\\");
-                    new_clcompile.push_str(&format!("    <ClCompile Include=\"{}\">\n", include_path));
-                    
-                    if let Some(parent) = file.parent() {
-                        let filter_name = parent.to_string_lossy().replace('/', "\\");
-                        if !filter_name.is_empty() {
-                            new_clcompile.push_str(&format!("      <Filter>{}</Filter>\n", filter_name));
-                        } else {
-                            new_clcompile.push_str("      <Filter>Source Files</Filter>\n");
-                        }
-                    } else {
-                        new_clcompile.push_str("      <Filter>Source Files</Filter>\n");
-                    }
-                    
-                    new_clcompile.push_str("    </ClCompile>\n");
-                }
-            }
-        }
-
-        // Insert filters if we have new ones
-        if !new_filters.is_empty() {
-            if let Some(pos) = self.content.find("<Filter Include=") {
-                // Find the ItemGroup containing filters
-                let before_pos = &self.content[..pos];
-                if let Some(itemgroup_start) = before_pos.rfind("<ItemGroup>") {
-                    let after_itemgroup = &self.content[itemgroup_start..];
-                    if let Some(itemgroup_end) = after_itemgroup.find("</ItemGroup>") {
-                        let insertion_point = itemgroup_start + itemgroup_end;
-                        self.content.insert_str(insertion_point, &new_filters);
-                    }
-                }
-            } else {
-                // Create new filter ItemGroup
-                if let Some(pos) = self.content.find("  </ItemGroup>") {
-                    let itemgroup = format!(
-                        "  <ItemGroup>\n{}\n  </ItemGroup>\n",
-                        new_filters.trim_end()
-                    );
-                    self.content.insert_str(pos, &itemgroup);
-                }
-            }
-        }
-
-        // Insert ClCompile entries
-        if !new_clcompile.is_empty() {
-            if let Some(pos) = self.content.find("<ClCompile Include=") {
-                // Find the ItemGroup containing ClCompile
-                let before_pos = &self.content[..pos];
-                if let Some(itemgroup_start) = before_pos.rfind("<ItemGroup>") {
-                    let after_itemgroup = &self.content[itemgroup_start..];
-                    if let Some(itemgroup_end) = after_itemgroup.find("</ItemGroup>") {
-                        let insertion_point = itemgroup_start + itemgroup_end;
-                        self.content.insert_str(insertion_point, &new_clcompile);
-                    }
-                }
-            } else {
-                // Create new ClCompile ItemGroup before closing Project
-                if let Some(pos) = self.content.rfind("</Project>") {
-                    let itemgroup = format!(
-                        "  <ItemGroup>\n{}\n  </ItemGroup>\n",
-                        new_clcompile.trim_end()
-                    );
-                    self.content.insert_str(pos, &itemgroup);
-                }
-            }
-        }
-
-        Ok(())
-    }
 
     pub fn add_source_files_with_hierarchy(&mut self, project_files: &[PathBuf], scan_relative_files: &[PathBuf]) -> Result<()> {
         // Collect unique directories for filters using scan_relative_files for hierarchy
@@ -755,19 +659,24 @@ impl FilterFile {
                     if let Some(end) = lines[i][start + 9..].find('"') {
                         let file_path = &lines[i][start + 9..start + 9 + end];
                         
-                        // Look for the filter in subsequent lines
-                        let mut j = i + 1;
-                        while j < lines.len() && !lines[j].trim().starts_with("</ClCompile>") {
-                            if lines[j].trim_start().starts_with("<Filter>") {
-                                if let Some(filter_start) = lines[j].find("<Filter>") {
-                                    if let Some(filter_end) = lines[j].find("</Filter>") {
-                                        let filter_name = &lines[j][filter_start + 8..filter_end];
-                                        file_to_filter.insert(file_path.to_string(), filter_name.to_string());
-                                        break;
+                        // Check if this is a self-closing tag
+                        if lines[i].trim().ends_with("/>") {
+                            // Self-closing tag, no filter - skip
+                        } else {
+                            // Look for the filter in subsequent lines until we find </ClCompile>
+                            let mut j = i + 1;
+                            while j < lines.len() && !lines[j].trim().starts_with("</ClCompile>") {
+                                if lines[j].trim_start().starts_with("<Filter>") {
+                                    if let Some(filter_start) = lines[j].find("<Filter>") {
+                                        if let Some(filter_end) = lines[j].find("</Filter>") {
+                                            let filter_name = &lines[j][filter_start + 8..filter_end];
+                                            file_to_filter.insert(file_path.to_string(), filter_name.to_string());
+                                            break;
+                                        }
                                     }
                                 }
+                                j += 1;
                             }
-                            j += 1;
                         }
                     }
                 }
@@ -1022,116 +931,183 @@ impl ProjectStructure {
             }
         }
         
-        // Create a structure of all items with their depth levels
-        let mut items: Vec<(String, usize, bool, Vec<&ProjectFile>)> = Vec::new(); // (name, depth, is_filter, files)
-        
-        // Add filters
-        let mut filter_names: Vec<_> = filter_files.keys().cloned().collect();
-        // Add existing empty filters
-        for filter_name in self.filters.keys() {
-            if !filter_names.contains(filter_name) {
-                filter_names.push(filter_name.clone());
-            }
-        }
-        filter_names.sort();
-        
-        for filter_name in &filter_names {
-            let depth = filter_name.matches('\\').count() + 1; // Count directory separators + 1
-            let files = filter_files.get(filter_name).cloned().unwrap_or_default();
-            items.push((filter_name.clone(), depth, true, files));
-        }
-        
-        // Add unfiltered files as "Source Files" at depth 1
-        if !unfiltered_files.is_empty() {
-            items.push(("Source Files".to_string(), 1, true, unfiltered_files));
-        }
-        
-        // Sort by depth first, then by name
-        items.sort_by(|a, b| a.1.cmp(&b.1).then_with(|| a.0.cmp(&b.0)));
-        
-        // Display items based on level restrictions
-        self.display_items(&mut output, &items, level, files_only);
+        // Build hierarchical tree structure
+        self.display_hierarchical_tree(&mut output, &filter_files, &unfiltered_files, level, files_only);
         
         output
     }
     
-    fn display_items(
-        &self, 
-        output: &mut String, 
-        items: &[(String, usize, bool, Vec<&ProjectFile>)], 
+    fn display_hierarchical_tree(
+        &self,
+        output: &mut String,
+        filter_files: &HashMap<String, Vec<&ProjectFile>>,
+        unfiltered_files: &[&ProjectFile],
         level: Option<usize>,
-        files_only: bool
+        files_only: bool,
     ) {
-        let mut processed_filters = HashSet::new();
-        let mut current_prefix_stack: Vec<(String, bool)> = Vec::new(); // (prefix, is_last)
+        // Build a simple hierarchical structure
+        use std::collections::BTreeMap;
         
-        for (index, (item_name, depth, is_filter, files)) in items.iter().enumerate() {
-            // Check if we should display this item based on level
-            if let Some(max_level) = level {
-                if *depth > max_level {
-                    continue;
-                }
+        // Create a sorted list of all filters (existing and empty)
+        let mut all_filters: Vec<String> = filter_files.keys().cloned().collect();
+        for filter_name in self.filters.keys() {
+            if !all_filters.contains(filter_name) {
+                all_filters.push(filter_name.clone());
+            }
+        }
+        all_filters.sort();
+        
+        // Build a tree structure for filters
+        let mut filter_tree: BTreeMap<String, Vec<String>> = BTreeMap::new(); // parent -> children
+        let mut filter_files_map: HashMap<String, Vec<&ProjectFile>> = HashMap::new();
+        
+        // First pass: identify all parent-child relationships
+        for filter in &all_filters {
+            let parts: Vec<&str> = filter.split('\\').collect();
+            
+            if parts.len() == 1 {
+                // Root level filter
+                filter_tree.entry(String::new()).or_default().push(filter.clone());
+            } else {
+                // Child filter - find its parent
+                let parent = parts[..parts.len()-1].join("\\");
+                filter_tree.entry(parent).or_default().push(filter.clone());
             }
             
-            if *is_filter {
-                if processed_filters.contains(item_name) {
-                    continue;
-                }
-                processed_filters.insert(item_name.clone());
-                
-                if files.is_empty() && files_only {
-                    continue; // Skip empty filters if files_only is true
-                }
-                
-                // Adjust prefix stack to current depth
-                current_prefix_stack.truncate(*depth - 1);
-                
-                // Determine if this is the last item at this depth
-                let is_last_at_depth = !items.iter().skip(index + 1).any(|(_, d, _, _)| d == depth);
-                
-                // Build prefix for this filter
-                let prefix = self.build_prefix(&current_prefix_stack);
-                let current_symbol = if is_last_at_depth { "└── " } else { "├── " };
-                
-                output.push_str(&format!("{}{}📁 {}\n", prefix, current_symbol, item_name));
-                
-                // Update prefix stack for children
-                current_prefix_stack.push((
-                    if is_last_at_depth { "    " } else { "│   " }.to_string(),
-                    is_last_at_depth
-                ));
-                
-                // Show files in this filter if level allows
-                if let Some(max_level) = level {
-                    if max_level == 0 {
-                        continue; // Level 0 = folders only
-                    }
-                    if *depth + 1 > max_level {
-                        continue; // Files would exceed max level
-                    }
-                }
-                
-                let mut sorted_files = files.clone();
-                sorted_files.sort_by_key(|f| &f.path);
-                
-                for (file_index, file) in sorted_files.iter().enumerate() {
-                    let is_last_file = file_index == sorted_files.len() - 1;
-                    let file_prefix = if is_last_file { "└── " } else { "├── " };
-                    
-                    let file_display = Path::new(&file.path)
-                        .file_name()
-                        .unwrap_or_default()
-                        .to_string_lossy()
-                        .to_string();
-                    
-                    let current_prefix = self.build_prefix(&current_prefix_stack);
-                    output.push_str(&format!("{}{}📄 {}\n", current_prefix, file_prefix, file_display));
-                }
+            // Store files for this filter
+            if let Some(files) = filter_files.get(filter) {
+                filter_files_map.insert(filter.clone(), files.clone());
+            }
+        }
+        
+        // Display unfiltered files first at root level (unless level=0 which means folders only)
+        let show_root_files = level.map_or(true, |l| l > 0);
+        let unfiltered_count = if show_root_files { unfiltered_files.len() } else { 0 };
+        let total_root_items = unfiltered_count + filter_tree.get("").map_or(0, |v| v.len());
+        let mut current_index = 0;
+        
+        if show_root_files {
+            for file in unfiltered_files {
+                let is_last = current_index == total_root_items - 1;
+                let symbol = if is_last { "└── " } else { "├── " };
+                let file_name = std::path::Path::new(&file.path)
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy();
+                output.push_str(&format!("{}📄 {}\n", symbol, file_name));
+                current_index += 1;
+            }
+        }
+        
+        // Display root level filters
+        if let Some(root_filters) = filter_tree.get("") {
+            for filter_name in root_filters {
+                let is_last = current_index == total_root_items - 1;
+                self.display_filter_recursive(
+                    output,
+                    filter_name,
+                    &filter_tree,
+                    &filter_files_map,
+                    "",
+                    is_last,
+                    1,
+                    level,
+                    files_only,
+                );
+                current_index += 1;
             }
         }
     }
     
-    fn build_prefix(&self, stack: &[(String, bool)]) -> String {
-        stack.iter().map(|(prefix, _)| prefix.as_str()).collect::<String>()
+    fn display_filter_recursive(
+        &self,
+        output: &mut String,
+        filter_name: &str,
+        filter_tree: &BTreeMap<String, Vec<String>>,
+        filter_files_map: &HashMap<String, Vec<&ProjectFile>>,
+        prefix: &str,
+        is_last: bool,
+        depth: usize,
+        max_level: Option<usize>,
+        files_only: bool,
+    ) {
+        // Check level restriction for folders
+        // For level 0, we show all folders but no files
+        // For level N (N>0), we show folders and files up to depth N
+        if let Some(max) = max_level {
+            if max == 0 {
+                // Level 0: show folders but no files (files are handled separately)
+                // Continue to show the folder
+            } else if depth > max {
+                // Level N: don't show folders beyond depth N
+                return;
+            }
+        }
+        
+        // Get files for this filter
+        let files = filter_files_map.get(filter_name).cloned().unwrap_or_default();
+        let children = filter_tree.get(filter_name).cloned().unwrap_or_default();
+        
+        // Skip empty filters if files_only is true
+        if files_only && files.is_empty() && children.is_empty() {
+            return;
+        }
+        
+        // Display this filter
+        let symbol = if is_last { "└── " } else { "├── " };
+        let display_name = if filter_name.contains('\\') {
+            filter_name.split('\\').last().unwrap()
+        } else {
+            filter_name
+        };
+        output.push_str(&format!("{}{}📁 {}\n", prefix, symbol, display_name));
+        
+        // Prepare prefix for children
+        let child_prefix = format!("{}{}", prefix, if is_last { "    " } else { "│   " });
+        
+        // Display children (sub-filters and files)
+        let total_children = children.len() + files.len();
+        let mut child_index = 0;
+        
+        // Display child filters first
+        for child_filter in &children {
+            let is_last_child = child_index == total_children - 1;
+            self.display_filter_recursive(
+                output,
+                child_filter,
+                filter_tree,
+                filter_files_map,
+                &child_prefix,
+                is_last_child,
+                depth + 1,
+                max_level,
+                files_only,
+            );
+            child_index += 1;
+        }
+        
+        // Display files in this filter (only if level allows and level > 0)
+        // Level 0 means folders only, so no files should be shown
+        // Files are considered to be at depth + 1 relative to their containing folder
+        let file_depth = depth + 1;
+        let show_files = max_level.map_or(true, |max| max > 0 && file_depth <= max);
+        if show_files {
+            let mut sorted_files = files;
+            sorted_files.sort_by_key(|f| &f.path);
+            
+            for file in &sorted_files {
+                let is_last_file = child_index == total_children - 1;
+                let file_symbol = if is_last_file { "└── " } else { "├── " };
+                
+                let file_name = std::path::Path::new(&file.path)
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy();
+                
+                output.push_str(&format!("{}{}📄 {}\n", child_prefix, file_symbol, file_name));
+                child_index += 1;
+            }
+        }
     }
+    
 }

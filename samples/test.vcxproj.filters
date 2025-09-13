@@ -1,143 +1,35 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-  <ItemGroup>
-  <ItemGroup>
-  <ItemGroup>
-  <ItemGroup>
-    <Filter Include="sources">
-      <UniqueIdentifier>{06CC6A36-A176-4226-90C9-1F02236F4D94}</UniqueIdentifier>
-    </Filter>
-      <Filter Include="src">
-      <UniqueIdentifier>{E4E2576C-215A-45E9-84D6-6C10DFEAA960}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\utils">
-      <UniqueIdentifier>{4A395CCA-6785-4715-9C19-813F9766DA5E}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src">
-      <UniqueIdentifier>{AC632CBD-CA93-4FC4-98D5-14B15848828B}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\utils">
-      <UniqueIdentifier>{A12A4646-79EF-4679-BFC2-631BEC728056}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\utils">
-      <UniqueIdentifier>{01925B8C-8EC5-4318-B769-85E0D4F93E15}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src">
-      <UniqueIdentifier>{8F4EB054-EDCA-41C0-B5E8-3DA696EF581A}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="include">
-      <UniqueIdentifier>{DF978435-C0F4-4443-A184-4E0AD2F0E191}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src">
-      <UniqueIdentifier>{A26234E1-F328-4B95-8138-EEB11E925E1A}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="include">
-      <UniqueIdentifier>{4B8D8C54-B9DC-492D-B7CD-A5271A94337D}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="folder2\folder2a">
-      <UniqueIdentifier>{E08D01D0-092B-4117-BD41-4FA60E575B10}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="folder3">
-      <UniqueIdentifier>{A70BCC6D-4851-4337-996F-7E434790F6C4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="folder4\src">
-      <UniqueIdentifier>{4022FB7D-2856-493D-A2B3-79414AF58C1B}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="folder1">
-      <UniqueIdentifier>{EF21839C-110D-41E4-95AF-348846488AAA}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="folder1">
-      <UniqueIdentifier>{DDFF9D38-658F-403C-B01E-8E642DF52499}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="folder4\src">
-      <UniqueIdentifier>{0E70FAE8-2573-419D-BC1F-EB5915E9818D}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="folder3">
-      <UniqueIdentifier>{8921C0EC-1A55-4F68-8642-854D85B2E61C}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="folder2\folder2a">
-      <UniqueIdentifier>{D3E654EF-B68A-4E9F-8A17-9E1450A33A2C}</UniqueIdentifier>
-    </Filter>
-</ItemGroup>
-  </ItemGroup>
-  </ItemGroup>
-  </ItemGroup>
-  </ItemGroup>
-  <ItemGroup>
-  </ItemGroup>
-  <ItemGroup>
-  </ItemGroup>
-  <ItemGroup>
-  </ItemGroup>
-  <ItemGroup>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="main.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helper.c">
-      <Filter>sources</Filter>
-    </ClCompile>
-    <ClCompile Include="src\utils\string_utils.c">
-      <Filter>sources</Filter>
-    </ClCompile>
-      <ClCompile Include="main.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helper.c">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="src\utils\string_utils.c">
-      <Filter>src\utils</Filter>
-    </ClCompile>
-    <ClCompile Include="main.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helper.c">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="src\utils\string_utils.c">
-      <Filter>src\utils</Filter>
-    </ClCompile>
-    <ClCompile Include="main.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helper.c">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="src\utils\string_utils.c">
-      <Filter>src\utils</Filter>
-    </ClCompile>
-    <ClCompile Include="main.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helper.c">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="folder1\file1.c">
-      <Filter>folder1</Filter>
-    </ClCompile>
-    <ClCompile Include="folder2\folder2a\file2.c">
-      <Filter>folder2\folder2a</Filter>
-    </ClCompile>
-    <ClCompile Include="folder3\file3.c">
-      <Filter>folder3</Filter>
-    </ClCompile>
-    <ClCompile Include="folder4\src\animal.c">
-      <Filter>folder4\src</Filter>
+    <ClCompile Include="main.c" />
+    <ClCompile Include="repo1\src\folder4\src\animal.c">
+      <Filter>level_one\level_two</Filter>
     </ClCompile>
     <ClCompile Include="repo1\src\folder1\file1.c">
-      <Filter>folder1</Filter>
+      <Filter>level_one</Filter>
     </ClCompile>
     <ClCompile Include="repo1\src\folder2\folder2a\file2.c">
-      <Filter>folder2\folder2a</Filter>
+      <Filter>level_one</Filter>
     </ClCompile>
-    <ClCompile Include="repo1\src\folder3\file3.c">
-      <Filter>folder3</Filter>
+    <ClCompile Include="src\helper.c">
+      <Filter>utils</Filter>
     </ClCompile>
-    <ClCompile Include="repo1\src\folder4\src\animal.c">
-      <Filter>folder4\src</Filter>
+    <ClCompile Include="src\utils\string_utils.c">
+      <Filter>utils</Filter>
     </ClCompile>
-</ItemGroup>
+    <ClCompile Include="repo1\src\folder3\more_utils.c">
+      <Filter>utils</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="utils">
+      <UniqueIdentifier>{678e3f2e-9ab6-4972-b1c0-f5a267be308b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="level_one">
+      <UniqueIdentifier>{1e17fe18-7d61-4308-9d38-425a41ee8544}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="level_one\level_two">
+      <UniqueIdentifier>{16b07392-1655-4072-b22d-4da4d6b6aaf8}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
 </Project>

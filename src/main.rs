@@ -254,73 +254,6 @@ fn create_basic_filter_file_with_hierarchy(project_files: &[PathBuf], scan_relat
     Ok(content)
 }
 
-fn create_basic_filter_file(files: &[PathBuf]) -> Result<String> {
-    use std::collections::HashMap;
-    
-    let mut filters = HashMap::new();
-    
-    // Collect unique directories
-    for file in files {
-        if let Some(parent) = file.parent() {
-            let filter_name = parent.to_string_lossy().replace('/', "\\");
-            if !filter_name.is_empty() {
-                filters.insert(filter_name, uuid::Uuid::new_v4());
-            }
-        }
-    }
-
-    let mut content = String::new();
-    content.push_str("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
-    content.push_str("<Project ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">\n");
-    
-    // Add default filters
-    content.push_str("  <ItemGroup>\n");
-    content.push_str("    <Filter Include=\"Source Files\">\n");
-    content.push_str("      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>\n");
-    content.push_str("      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>\n");
-    content.push_str("    </Filter>\n");
-    content.push_str("    <Filter Include=\"Header Files\">\n");
-    content.push_str("      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>\n");
-    content.push_str("      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>\n");
-    content.push_str("    </Filter>\n");
-    
-    // Add custom filters for directories
-    for (filter_name, uuid) in &filters {
-        content.push_str(&format!("    <Filter Include=\"{}\">\n", filter_name));
-        content.push_str(&format!("      <UniqueIdentifier>{{{}}}</UniqueIdentifier>\n", uuid.to_string().to_uppercase()));
-        content.push_str("    </Filter>\n");
-    }
-    
-    content.push_str("  </ItemGroup>\n");
-    
-    // Add file entries
-    content.push_str("  <ItemGroup>\n");
-    for file in files {
-        if let Some(ext) = file.extension() {
-            if ext == "c" || ext == "cpp" || ext == "cc" || ext == "cxx" {
-                let include_path = file.to_string_lossy().replace('/', "\\");
-                content.push_str(&format!("    <ClCompile Include=\"{}\">\n", include_path));
-                
-                if let Some(parent) = file.parent() {
-                    let filter_name = parent.to_string_lossy().replace('/', "\\");
-                    if !filter_name.is_empty() {
-                        content.push_str(&format!("      <Filter>{}</Filter>\n", filter_name));
-                    } else {
-                        content.push_str("      <Filter>Source Files</Filter>\n");
-                    }
-                } else {
-                    content.push_str("      <Filter>Source Files</Filter>\n");
-                }
-                
-                content.push_str("    </ClCompile>\n");
-            }
-        }
-    }
-    content.push_str("  </ItemGroup>\n");
-    content.push_str("</Project>\n");
-
-    Ok(content)
-}
 
 fn delete_from_project(
     project_path: PathBuf,
@@ -456,7 +389,7 @@ fn delete_from_project(
         println!("Successfully updated {}", filter_path.display());
     }
     
-    println!("\n🗑️  Successfully removed {} files from project!", deleted_files.len());
+    println!("\n🗑️  Successfully removed {} files from project!\n", deleted_files.len());
     Ok(())
 }
 
@@ -477,12 +410,11 @@ fn view_project_structure(
     let filter_count = structure.filters.len();
     
     if file_count == 0 && filter_count == 0 {
-        println!("📊 Project summary: Empty project");
+        println!("⚡︎ Project summary: Empty project\n");
+    } else if !files_only && filter_count > 0 {
+        println!("⚡︎ Project summary: {} files, {} filters\n", file_count, filter_count);
     } else {
-        println!("📊 Project summary: {} files", file_count);
-        if !files_only && filter_count > 0 {
-            println!("   {} filters", filter_count);
-        }
+        println!("⚡︎ Project summary: {} files\n", file_count);
     }
     
     Ok(())
