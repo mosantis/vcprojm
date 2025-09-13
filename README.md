@@ -1,6 +1,6 @@
 # Visual Studio Project Manager
 
-A Rust command-line tool for manipulating Visual Studio project files (.vcxproj) and their associated filter files (.vcxproj.filters).
+A cross-platform Rust command-line tool for managing Visual Studio project files (.vcxproj) and their associated filter files (.vcxproj.filters). Supports any file extension and provides comprehensive project manipulation capabilities.
 
 ## Features
 
@@ -22,7 +22,7 @@ A Rust command-line tool for manipulating Visual Studio project files (.vcxproj)
    ```bash
    cargo build --release
    ```
-4. The executable will be available at `target/release/vs-project-manager` (or `vs-project-manager.exe` on Windows)
+4. The executable will be available at `target/release/vsprojm` (or `vsprojm.exe` on Windows)
 
 ## Usage
 
@@ -32,16 +32,16 @@ Add all files of a specific extension to a Visual Studio project:
 
 ```bash
 # Add all .c files from the project directory
-vs-project-manager add --extension c --project path/to/project.vcxproj
+vsprojm add --extension c --project path/to/project.vcxproj
 
 # Add all .cpp files using short aliases
-vs-project-manager a -e cpp -p path/to/project.vcxproj
+vsprojm a -e cpp -p path/to/project.vcxproj
 
 # Scan a specific directory instead of the project directory
-vs-project-manager add -e c -p project.vcxproj -d src/
+vsprojm add -e c -p project.vcxproj -d src/
 
 # Disable recursive scanning (only scan the root directory)
-vs-project-manager add -e c -p project.vcxproj --recursive false
+vsprojm add -e c -p project.vcxproj --recursive false
 ```
 
 ### Command Options
@@ -57,19 +57,19 @@ Remove files, folders, or all files of a specific extension from the project:
 
 ```bash
 # Delete a specific file
-vs-project-manager delete --target "main.c" --project MyProject.vcxproj
+vsprojm delete --target "main.c" --project MyProject.vcxproj
 
 # Delete an entire folder and its contents
-vs-project-manager del -t "src/utils" -p MyProject.vcxproj
+vsprojm del -t "src/utils" -p MyProject.vcxproj
 
 # Delete an entire filter (e.g., "Header Files")
-vs-project-manager del -t "Header Files" -p MyProject.vcxproj
+vsprojm del -t "Header Files" -p MyProject.vcxproj
 
 # Delete all files by extension
-vs-project-manager del -e c -p MyProject.vcxproj
+vsprojm del -e c -p MyProject.vcxproj
 
 # Skip confirmation prompt
-vs-project-manager del -t "main.c" -p MyProject.vcxproj -y
+vsprojm del -t "main.c" -p MyProject.vcxproj -y
 ```
 
 ### Delete Command Options
@@ -85,10 +85,10 @@ Display the project structure as it appears in Visual Studio:
 
 ```bash
 # Basic view (file extensions always shown)
-vs-project-manager view --project MyProject.vcxproj
+vsprojm view --project MyProject.vcxproj
 
 # Show only files (hide empty filters)
-vs-project-manager v -p MyProject.vcxproj --files-only
+vsprojm v -p MyProject.vcxproj --files-only
 ```
 
 ### View Command Options
@@ -104,13 +104,13 @@ Rename folders and filters in the project structure:
 
 ```bash
 # Basic rename
-vs-project-manager rename --from "old_name" --to "new_name" --project MyProject.vcxproj
+vsprojm rename --from "old_name" --to "new_name" --project MyProject.vcxproj
 
 # Using short alias with auto-confirm
-vs-project-manager ren -f "src" -t "source" -p MyProject.vcxproj -y
+vsprojm ren -f "src" -t "source" -p MyProject.vcxproj -y
 
 # Rename nested folder
-vs-project-manager rename -f "src\\utils" -t "utilities" -p MyProject.vcxproj
+vsprojm rename -f "src\\utils" -t "utilities" -p MyProject.vcxproj
 ```
 
 ### Rename Command Options
@@ -128,69 +128,69 @@ vs-project-manager rename -f "src\\utils" -t "utilities" -p MyProject.vcxproj
 
 1. **Add all C files to a project:**
    ```bash
-   vs-project-manager add -e c -p MyProject.vcxproj
+   vsprojm add -e c -p MyProject.vcxproj
    ```
 
 2. **Add C++ files from a specific source directory:**
    ```bash
-   vs-project-manager add -e cpp -p MyProject.vcxproj -d src/
+   vsprojm add -e cpp -p MyProject.vcxproj -d src/
    ```
 
 3. **Add files non-recursively:**
    ```bash
-   vs-project-manager a -e c -p MyProject.vcxproj -r false
+   vsprojm a -e c -p MyProject.vcxproj -r false
    ```
 
 #### Deleting Files
 
 1. **Delete a specific file:**
    ```bash
-   vs-project-manager del -t "main.c" -p MyProject.vcxproj
+   vsprojm del -t "main.c" -p MyProject.vcxproj
    ```
 
 2. **Delete an entire source folder:**
    ```bash
-   vs-project-manager del -t "src" -p MyProject.vcxproj
+   vsprojm del -t "src" -p MyProject.vcxproj
    ```
 
 3. **Delete all header files (.h):**
    ```bash
-   vs-project-manager del -e h -p MyProject.vcxproj
+   vsprojm del -e h -p MyProject.vcxproj
    ```
 
 4. **Delete a Visual Studio filter:**
    ```bash
-   vs-project-manager del -t "Header Files" -p MyProject.vcxproj
+   vsprojm del -t "Header Files" -p MyProject.vcxproj
    ```
 
 #### Viewing Project Structure
 
 1. **View project structure:**
    ```bash
-   vs-project-manager view -p MyProject.vcxproj
+   vsprojm view -p MyProject.vcxproj
    ```
 
 2. **View only files (no empty filters):**
    ```bash
-   vs-project-manager v -p MyProject.vcxproj --files-only
+   vsprojm v -p MyProject.vcxproj --files-only
    ```
 
 #### Renaming Folders
 
 1. **Rename a folder:**
    ```bash
-   vs-project-manager rename -f "old_folder" -t "new_folder" -p MyProject.vcxproj
+   vsprojm rename -f "old_folder" -t "new_folder" -p MyProject.vcxproj
    ```
 
 2. **Rename with auto-confirm:**
    ```bash
-   vs-project-manager ren -f "src" -t "source" -p MyProject.vcxproj -y
+   vsprojm ren -f "src" -t "source" -p MyProject.vcxproj -y
    ```
 
 3. **Merge conflicting folders:**
    ```bash
    # If "utilities" already exists, will prompt to merge
-   vs-project-manager rename -f "utils" -t "utilities" -p MyProject.vcxproj
+   vsprojm rename -f "utils" -t "utilities" -p MyProject.vcxproj
    ```
 
 ## What the tool does
@@ -259,20 +259,19 @@ The tool will:
        ├── 📄 utils.c
        └── 📁 core
            └── 📄 engine.c
-   📊 Project summary: 3 files
-      2 filters
+   ⚡︎ Project summary: 3 files, 3 filters
    ```
 3. **Delete**: Remove files and clean up empty filters automatically
 
 ## Supported File Extensions
 
-The tool currently supports C and C++ source files:
-- `.c`
-- `.cpp`  
-- `.cc`
-- `.cxx`
+The tool supports **any file extension** - you simply specify the extension you want when running the command. Common examples include:
 
-Additional extensions can be easily added by modifying the source code.
+- `.c`, `.cpp`, `.cc`, `.cxx`
+- `.h`, `.hpp`, `.hxx`
+
+
+The tool performs case-insensitive extension matching, so `.C` and `.c` are treated the same.
 
 ## Dependencies
 
@@ -287,4 +286,28 @@ Contributions are welcome! Feel free to open issues or submit pull requests.
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Disclaimer
+
+**IMPORTANT: This software is provided "AS IS" without any warranty of any kind.**
+
+This tool modifies Visual Studio project files (.vcxproj) and filter files (.vcxproj.filters). While it has been tested, **you should always backup your project files before using this tool**. 
+
+**The authors and contributors of this project are not responsible for:**
+- Any damage, corruption, or loss of data that may result from using this software
+- Any issues that may arise from modifications made to your project files
+- Any compatibility problems with different versions of Visual Studio
+- Any build failures or project corruption that may occur
+
+**By using this tool, you acknowledge that:**
+- You understand the risks involved in modifying project files
+- You are responsible for maintaining backups of your important project files
+- You use this software at your own risk and discretion
+- You will not hold the authors liable for any issues that may arise
+
+**Recommendations:**
+- Always backup your .vcxproj and .vcxproj.filters files before use
+- Test the tool on non-critical projects first
+- Verify changes in Visual Studio after running the tool
+- Keep your projects under version control (Git, SVN, etc.)

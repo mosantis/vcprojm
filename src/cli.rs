@@ -124,7 +124,7 @@ pub enum Commands {
         project: PathBuf,
         
         /// Include directory path
-        #[arg(short, long)]
+        #[arg(short = 'x', long)]
         path: String,
     },
     
@@ -136,7 +136,7 @@ pub enum Commands {
         project: PathBuf,
         
         /// Library directory path
-        #[arg(short, long)]
+        #[arg(short = 'x', long)]
         path: String,
     },
     

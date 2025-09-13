@@ -337,7 +337,7 @@ fn delete_from_project(
     }
     
     if !preview_filters.is_empty() {
-        println!("\n📂 Filters to be removed:");
+        println!("\n📁 Filters to be removed:");
         for filter in &preview_filters {
             println!("  - {}", filter);
         }
